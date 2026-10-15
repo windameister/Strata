@@ -2966,6 +2966,11 @@ int main(int argc, char** argv) {
         return n > 0 ? n : 0;
     }();
     strata::core::set_primary_device(primary_device);
+#if defined(STRATA_GPU_METAL)
+    // cached conversations hold the Metal window's own K/V and state
+    if (o.serve && o.conversation_cache_mib > 0 && o.prompt_cache > 0 && o.conversation_cache_slots > 0)
+        strata::core::set_metal_conversation_cache(true);
+#endif
     // parking with --layer-split saves every stage (SavedConversation::stage_images)
     // Layer split (multi-GPU): the later stages run layers [K_i, K_i+1) on their own GPUs (--split-device, default
     // the next visible ones); "auto" places the K from each GPU's free VRAM once the weights are in (below).  KV
@@ -12097,6 +12102,10 @@ int main(int argc, char** argv) {
                 if (o.peer_device >= 1) { refuse("session files do not support --peer-device"); continue; }
                 if (o.batch > 0) { refuse("session files do not support --batch (parallel requests)"); continue; }
                 if (o.prompt_cache <= 0) { refuse("session files need --prompt-cache > 0"); continue; }
+#if defined(STRATA_GPU_METAL)   // before the fingerprint, which wants CUDA-side MTP files
+                refuse("conversation snapshot: session files (SAVE / LOAD) are not supported on the Metal engine");
+                continue;
+#endif
                 if (!ver.wait_commit(err)) {
                     std::printf("ERR %s\n", err.c_str());
                     return 1;
@@ -12880,7 +12889,8 @@ int main(int argc, char** argv) {
                     }
                     if (cudaDeviceSynchronize() != cudaSuccess) { std::printf("ERR stage sync\n"); return 1; }
                 }
-                if (use_mtp && std::getenv("STRATA_SNAPSHOT_VERIFY") != nullptr) {
+                // (a Metal image has no session draft ring)
+                if (use_mtp && std::getenv("STRATA_SNAPSHOT_VERIFY") != nullptr && !strata::core::metal_conversation_cache()) {
                     uint64_t draft_hash = 0;
                     const auto& draft_kv = stages.empty() || mtp_first ? incoming->kv.back() : incoming->stage_images.back().kv.back();
                     const strata::core::OnDevice on_d(stages.empty() || mtp_first ? 0 : stages.back()->dev);

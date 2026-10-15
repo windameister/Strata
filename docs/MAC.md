@@ -254,6 +254,7 @@ reads an int8 copy of the codebook, the CPU path an int16 one; the Mac multiplie
   green triangle, the text "STRATA 42") was described correctly with both readers. Checked on one Mac only; the M5 Max is untested for pictures.
 - **Context:** measured up to 32K (needles, KL). Setup recommends 32K below 96 GB and 64K from 96 GB. Up to the model's 262K can be set, but it is not measured.
 - **One request at a time.** `--parallel` (batch slots) is not ported. Several clients queue.
+- **Several conversations:** off by default, so a switch between chats (or a short side request, such as a title) reads the whole prompt again. `--conversation-cache-mib 4096 --conversation-cache-slots 4` keeps them in RAM, as on a PC ([DETAILS.md](DETAILS.md), "Multiple conversations"). Session files (`SAVE` / `LOAD`) are not supported on Mac.
 - **Not ported:** the control vector (`--control-vector-scaled`) and the PC tuning (`--calibrate`).
 - **Streaming:** measured at 32 GB only. The model's file must be on the internal SSD; an external disk is untested and likely much slower.
 - **Families:** the original Qwen3.8-Flash-Next, Unsloth's UD-Q4/Q5/Q6_K_XL and agentionai's Gyro-S are measured (above). Setup repacks Unsloth's shards into one file for the GPU; a Gyro file is used as it is. Gyro-M runs on the same kernels (checked tensor by tensor) but no Mac here could hold it. The Swift and Coder releases are not set up on Mac yet, and Qwen3.6 does not run on the Mac engine.
